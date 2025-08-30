@@ -55,37 +55,45 @@ app.post('/vehiculos', async (req, res) => {
   }
 });
 
-//put 
 app.put('/vehiculos/:id', async (req, res) => {
-  const {id} = req.params;
+  const { id } = req.params;
   const { marca, modelo, color, precio, placa } = req.body;
 
+  // Validación de campos
   if (!marca || !modelo || !color || !precio || !placa) {
     return res.status(400).json({ error: 'Todos los campos son obligatorios' });
   }
 
   try {
+    // Asegurarse de que precio sea un número válido
+    const precioNum = parseFloat(precio);
+    if (isNaN(precioNum)) {
+      return res.status(400).json({ error: 'Precio inválido' });
+    }
+
     const [result] = await pool.query(
-      "UPDATE vehiculos SET marca = ?, color = ?, precio = ?, placa = ? WHERE id = ?",
-      [marca, modelo, color, precio, placa, id]
+      "UPDATE vehiculos SET marca = ?, modelo = ?, color = ?, precio = ?, placa = ? WHERE id = ?",
+      [marca, modelo, color, precioNum, placa, id]
     );
 
-    if (result.affectedRows === 0){
-      return res.status(404).json({message: 'vehiculos no existe'})
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Vehículo no existe' });
     }
 
-    res.status(200).json({message: 'vehiculo actualizado correctamente'})
+    res.status(200).json({ message: 'Vehículo actualizado correctamente' });
 
-    const id = result.insertId; // campo correcto
-
-    res.status(200).json({ id });
   } catch (error) {
-    if (error){
-      if(error.code === 'ER_DUP_EMTRY'){
-        return res.status(409).json({error: 'la placa ya existe'})
-      }
+    console.error("Error en PUT /vehiculos/:id:", error);
+
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ error: 'La placa ya existe' });
     }
-    handleError(res, error);
+
+    // Enviar detalle del error para depuración
+    res.status(500).json({ 
+      error: 'Error interno del servidor',
+      detalle: error.message
+    });
   }
 });
 
